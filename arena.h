@@ -44,13 +44,13 @@ typedef struct Region Region;
 
 struct Region {
     Region *next;
-    size_t count;
     size_t capacity;
     uintptr_t data[];
 };
 
 typedef struct {
     Region *begin, *end;
+    size_t count;
 } Arena;
 
 #define REGION_DEFAULT_CAPACITY (8*1024)
@@ -108,7 +108,6 @@ Region *new_region(size_t capacity)
     Region *r = (Region*)malloc(size_bytes);
     ARENA_ASSERT(r);
     r->next = NULL;
-    r->count = 0;
     r->capacity = capacity;
     return r;
 }
@@ -127,7 +126,6 @@ Region *new_region(size_t capacity)
     Region *r = mmap(NULL, size_bytes, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
     ARENA_ASSERT(r != MAP_FAILED);
     r->next = NULL;
-    r->count = 0;
     r->capacity = capacity;
     return r;
 }
@@ -164,7 +162,6 @@ Region *new_region(size_t capacity)
         ARENA_ASSERT(0 && "VirtualAllocEx() failed.");
 
     r->next = NULL;
-    r->count = 0;
     r->capacity = capacity;
     return r;
 }
@@ -207,22 +204,36 @@ void *arena_alloc(Arena *a, size_t size_bytes)
         if (capacity < size) capacity = size;
         a->end = new_region(capacity);
         a->begin = a->end;
+        a->count = 0;
     }
 
-    while (a->end->count + size > a->end->capacity && a->end->next != NULL) {
-        a->end = a->end->next;
+
+    Region *old_end = a->end;
+    Region **end_p = NULL;
+    while (a->count + size > a->end->capacity && a->end->next != NULL) {
+        end_p = &a->end->next;
+        a->end = *end_p;
+        a->count = 0;
     }
 
-    if (a->end->count + size > a->end->capacity) {
-        ARENA_ASSERT(a->end->next == NULL);
+    if (end_p != NULL) {
+        *end_p = a->end->next;
+        a->end->next = old_end->next;
+        old_end->next = a->end;
+    }
+
+    if (a->count + size > a->end->capacity) {
         size_t capacity = REGION_DEFAULT_CAPACITY;
         if (capacity < size) capacity = size;
-        a->end->next = new_region(capacity);
-        a->end = a->end->next;
+        Region *r = new_region(capacity);
+        r->next = old_end->next;
+        old_end->next = r;
+        a->end = r;
+        a->count = 0;
     }
 
-    void *result = &a->end->data[a->end->count];
-    a->end->count += size;
+    void *result = &a->end->data[a->count];
+    a->count += size;
     return result;
 }
 
@@ -254,11 +265,8 @@ void *arena_memdup(Arena *a, void *data, size_t size)
 
 void arena_reset(Arena *a)
 {
-    for (Region *r = a->begin; r != NULL; r = r->next) {
-        r->count = 0;
-    }
-
     a->end = a->begin;
+    a->count = 0;
 }
 
 void arena_free(Arena *a)
@@ -271,6 +279,7 @@ void arena_free(Arena *a)
     }
     a->begin = NULL;
     a->end = NULL;
+    a->count = 0;
 }
 
 #endif // ARENA_IMPLEMENTATION
