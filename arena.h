@@ -58,10 +58,15 @@ typedef struct {
 Region *new_region(size_t capacity);
 void free_region(Region *r);
 
-// TODO: snapshot/rewind capability for the arena
-// - Snapshot should be combination of a->end and a->end->count.
-// - Rewinding should be restoring a->end and a->end->count from the snapshot and
-// setting count-s of all the Region-s after the remembered a->end to 0.
+// snapshot/rewind capability for the arena.
+// - Don't use the old arena while using the subarena.
+// - Subarenas can be nested, but they can't be free'd.
+// - Just stop using the subarena when you're done with it and keep using the
+//   old arena normally.
+#define arena_subarena_init(a) (1 ? *(a) : (Arena){0})
+#define arena_subarena_deinit(a, s)                                           \
+    (void)((a)->begin == NULL && ((a)->begin = (a)->end = (s)->begin))
+
 void *arena_alloc(Arena *a, size_t size_bytes);
 void *arena_realloc(Arena *a, void *oldptr, size_t oldsz, size_t newsz);
 char *arena_strdup(Arena *a, const char *cstr);

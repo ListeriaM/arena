@@ -14,34 +14,32 @@ The library itself does not require any special building. You can simple copy-pa
 #define ARENA_IMPLEMENTATION
 #include "arena.h"
 
-static Arena default_arena = {0};
-static Arena temporary_arena = {0};
-static Arena *context_arena = &default_arena;
-
-void *context_alloc(size_t size)
-{
-    assert(context_arena);
-    return arena_alloc(context_arena, size);
-}
-
 int main(void)
 {
+    Arena default_arena = {0};
+
     // Allocate stuff in default_arena
-    context_alloc(64);
-    context_alloc(128);
-    context_alloc(256);
-    context_alloc(512);
+    arena_alloc(&default_arena, 64);
+    arena_alloc(&default_arena, 128);
+    arena_alloc(&default_arena, 256);
+    arena_alloc(&default_arena, 512);
+    void *p;
 
-    // Allocate stuff in temporary_arena;
-    context_arena = &temporary_arena;
-    context_alloc(64);
-    context_alloc(128);
-    context_alloc(256);
-    context_alloc(512);
+    {
+        Arena temporary_arena = arena_subarena_init(&default_arena);
 
+        // Allocate stuff in temporary_arena;
+        p = arena_alloc(&temporary_arena, 64);
+        arena_alloc(&temporary_arena, 128);
+        arena_alloc(&temporary_arena, 256);
+        arena_alloc(&temporary_arena, 512);
+
+        arena_subarena_deinit(&default_arena, &temporary_arena);
+    }
+
+    assert(p == arena_alloc(&default_arena, 64));
     // Deallocate everything at once
     arena_free(&default_arena);
-    arena_free(&temporary_arena);
     return 0;
 }
 ```
