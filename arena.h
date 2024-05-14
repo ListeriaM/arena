@@ -242,16 +242,22 @@ void *arena_alloc(Arena *a, size_t size_bytes)
     return result;
 }
 
-void *arena_realloc(Arena *a, void *oldptr, size_t oldsz, size_t newsz)
+void *arena_realloc(Arena *a, void *oldptr, size_t oldsz_bytes, size_t newsz_bytes)
 {
-    if (newsz <= oldsz) return oldptr;
-    void *newptr = arena_alloc(a, newsz);
-    char *newptr_char = (char*)newptr;
-    char *oldptr_char = (char*)oldptr;
-    for (size_t i = 0; i < oldsz; ++i) {
-        newptr_char[i] = oldptr_char[i];
+    size_t oldsz = (oldsz_bytes + sizeof(uintptr_t) - 1)/sizeof(uintptr_t);
+    size_t newsz = (newsz_bytes + sizeof(uintptr_t) - 1)/sizeof(uintptr_t);
+
+    if (oldptr == NULL)
+        return arena_alloc(a, newsz_bytes);
+
+    if ((uintptr_t *)oldptr + oldsz == &a->end->data[a->count]
+            && a->count - oldsz + newsz <= a->end->capacity) {
+        a->count -= oldsz;
+        a->count += newsz;
+    } else if (newsz > oldsz) {
+        return memcpy(arena_alloc(a, newsz_bytes), oldptr, oldsz_bytes);
     }
-    return newptr;
+    return oldptr;
 }
 
 char *arena_strdup(Arena *a, const char *cstr)
