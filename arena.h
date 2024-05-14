@@ -70,7 +70,7 @@ void free_region(Region *r);
 void *arena_alloc(Arena *a, size_t size_bytes);
 void *arena_realloc(Arena *a, void *oldptr, size_t oldsz, size_t newsz);
 char *arena_strdup(Arena *a, const char *cstr);
-void *arena_memdup(Arena *a, void *data, size_t size);
+void *arena_memdup(Arena *a, const void *data, size_t size);
 
 void arena_reset(Arena *a);
 void arena_free(Arena *a);
@@ -262,14 +262,10 @@ void *arena_realloc(Arena *a, void *oldptr, size_t oldsz_bytes, size_t newsz_byt
 
 char *arena_strdup(Arena *a, const char *cstr)
 {
-    size_t n = strlen(cstr);
-    char *dup = (char*)arena_alloc(a, n + 1);
-    memcpy(dup, cstr, n);
-    dup[n] = '\0';
-    return dup;
+    return arena_memdup(a, cstr, strlen(cstr) + 1);
 }
 
-void *arena_memdup(Arena *a, void *data, size_t size)
+void *arena_memdup(Arena *a, const void *data, size_t size)
 {
     return memcpy(arena_alloc(a, size), data, size);
 }
