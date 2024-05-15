@@ -65,6 +65,7 @@ ARENA_DEF void arena_deinit(Arena *a);
 
 ARENA_DEF void *arena_alloc(Arena *a, size_t size_bytes);
 ARENA_DEF void *arena_realloc(Arena *a, void *oldptr, size_t oldsz, size_t newsz);
+ARENA_DEF void  arena_free(Arena *a, void *ptr, size_t size_bytes);
 
 #endif // ARENA_H_
 
@@ -242,6 +243,14 @@ ARENA_DEF void *arena_realloc(Arena *a, void *oldptr, size_t oldsz_bytes, size_t
         return newptr;
     }
     return oldptr;
+}
+
+ARENA_DEF void arena_free(Arena *a, void *ptr, size_t size_bytes)
+{
+    size_t sz = (size_bytes + sizeof(uintptr_t) - 1)/sizeof(uintptr_t);
+
+    if (ptr != NULL && (uintptr_t *)ptr + sz == &a->end->data[a->count])
+        a->count -= sz;
 }
 
 ARENA_DEF void arena_deinit(Arena *a)
