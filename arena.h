@@ -50,6 +50,10 @@ typedef struct {
     size_t count;
 } Arena;
 
+#define ARENA_INIT {0}
+#define arena_reset(a) (void)((a)->end = (a)->begin, (a)->count = 0)
+ARENA_DEF void arena_deinit(Arena *a);
+
 // snapshot/rewind capability for the arena.
 // - Don't use the old arena while using the subarena.
 // - Subarenas can be nested, but they can't be free'd.
@@ -61,9 +65,6 @@ typedef struct {
 
 ARENA_DEF void *arena_alloc(Arena *a, size_t size_bytes);
 ARENA_DEF void *arena_realloc(Arena *a, void *oldptr, size_t oldsz, size_t newsz);
-
-#define arena_reset(a) (void)((a)->end = (a)->begin, (a)->count = 0)
-ARENA_DEF void arena_deinit(Arena *a);
 
 #endif // ARENA_H_
 
