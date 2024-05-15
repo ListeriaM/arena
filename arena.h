@@ -62,8 +62,6 @@ typedef struct {
 
 ARENA_DEF void *arena_alloc(Arena *a, size_t size_bytes);
 ARENA_DEF void *arena_realloc(Arena *a, void *oldptr, size_t oldsz, size_t newsz);
-ARENA_DEF char *arena_strdup(Arena *a, const char *cstr);
-ARENA_DEF void *arena_memdup(Arena *a, const void *data, size_t size);
 
 #define arena_reset(a) (void)((a)->end = (a)->begin, (a)->count = 0)
 ARENA_DEF void arena_free(Arena *a);
@@ -241,16 +239,6 @@ ARENA_DEF void *arena_realloc(Arena *a, void *oldptr, size_t oldsz_bytes, size_t
         return memcpy(arena_alloc(a, newsz_bytes), oldptr, oldsz_bytes);
     }
     return oldptr;
-}
-
-ARENA_DEF char *arena_strdup(Arena *a, const char *cstr)
-{
-    return arena_memdup(a, cstr, strlen(cstr) + 1);
-}
-
-ARENA_DEF void *arena_memdup(Arena *a, const void *data, size_t size)
-{
-    return memcpy(arena_alloc(a, size), data, size);
 }
 
 ARENA_DEF void arena_free(Arena *a)
