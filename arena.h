@@ -24,7 +24,6 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <string.h>
 
 #ifndef ARENA_ASSERT
 #include <assert.h>
@@ -236,7 +235,10 @@ ARENA_DEF void *arena_realloc(Arena *a, void *oldptr, size_t oldsz_bytes, size_t
         a->count -= oldsz;
         a->count += newsz;
     } else if (newsz > oldsz) {
-        return memcpy(arena_alloc(a, newsz_bytes), oldptr, oldsz_bytes);
+        char *newptr = arena_alloc(a, newsz_bytes);
+        for (size_t i = 0; i < oldsz_bytes; i++)
+            newptr[i] = ((char *)oldptr)[i];
+        return newptr;
     }
     return oldptr;
 }
