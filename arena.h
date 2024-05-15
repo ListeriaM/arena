@@ -72,7 +72,7 @@ void *arena_realloc(Arena *a, void *oldptr, size_t oldsz, size_t newsz);
 char *arena_strdup(Arena *a, const char *cstr);
 void *arena_memdup(Arena *a, const void *data, size_t size);
 
-void arena_reset(Arena *a);
+#define arena_reset(a) (void)((a)->end = (a)->begin, (a)->count = 0)
 void arena_free(Arena *a);
 
 #define ARENA_DA_INIT_CAP 256
@@ -268,12 +268,6 @@ char *arena_strdup(Arena *a, const char *cstr)
 void *arena_memdup(Arena *a, const void *data, size_t size)
 {
     return memcpy(arena_alloc(a, size), data, size);
-}
-
-void arena_reset(Arena *a)
-{
-    a->end = a->begin;
-    a->count = 0;
 }
 
 void arena_free(Arena *a)
