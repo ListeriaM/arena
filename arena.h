@@ -46,21 +46,10 @@
 
 typedef struct Region Region;
 
-struct Region {
-    Region *next;
-    size_t capacity;
-    uintptr_t data[];
-};
-
 typedef struct {
     Region *begin, *end;
     size_t count;
 } Arena;
-
-#define REGION_DEFAULT_CAPACITY (8*1024)
-
-ARENA_DEF Region *new_region(size_t capacity);
-ARENA_DEF void free_region(Region *r);
 
 // snapshot/rewind capability for the arena.
 // - Don't use the old arena while using the subarena.
@@ -83,12 +72,23 @@ ARENA_DEF void arena_free(Arena *a);
 
 #ifdef ARENA_IMPLEMENTATION
 
+struct Region {
+    Region *next;
+    size_t capacity;
+    uintptr_t data[];
+};
+
+#define REGION_DEFAULT_CAPACITY (8*1024)
+
+static Region *arena__new_region(size_t capacity);
+static void arena__free_region(Region *r);
+
 #if ARENA_BACKEND == ARENA_BACKEND_LIBC_MALLOC
 #include <stdlib.h>
 
-// TODO: instead of accepting specific capacity new_region() should accept the size of the object we want to fit into the region
-// It should be up to new_region() to decide the actual capacity to allocate
-ARENA_DEF Region *new_region(size_t capacity)
+// TODO: instead of accepting specific capacity arena__new_region() should accept the size of the object we want to fit into the region
+// It should be up to arena__new_region() to decide the actual capacity to allocate
+static Region *arena__new_region(size_t capacity)
 {
     size_t size_bytes = sizeof(Region) + sizeof(uintptr_t)*capacity;
     // TODO: it would be nice if we could guarantee that the regions are allocated by ARENA_BACKEND_LIBC_MALLOC are page aligned
@@ -99,15 +99,16 @@ ARENA_DEF Region *new_region(size_t capacity)
     return r;
 }
 
-ARENA_DEF void free_region(Region *r)
+static void arena__free_region(Region *r)
 {
     free(r);
 }
+
 #elif ARENA_BACKEND == ARENA_BACKEND_LINUX_MMAP
 #include <unistd.h>
 #include <sys/mman.h>
 
-ARENA_DEF Region *new_region(size_t capacity)
+static Region *arena__new_region(size_t capacity)
 {
     size_t size_bytes = sizeof(Region) + sizeof(uintptr_t) * capacity;
     Region *r = mmap(NULL, size_bytes, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
@@ -117,7 +118,7 @@ ARENA_DEF Region *new_region(size_t capacity)
     return r;
 }
 
-ARENA_DEF void free_region(Region *r)
+static void arena__free_region(Region *r)
 {
     size_t size_bytes = sizeof(Region) + sizeof(uintptr_t) * r->capacity;
     int ret = munmap(r, size_bytes);
@@ -135,7 +136,7 @@ ARENA_DEF void free_region(Region *r)
 
 #define INV_HANDLE(x)       (((x) == NULL) || ((x) == INVALID_HANDLE_VALUE))
 
-ARENA_DEF Region *new_region(size_t capacity)
+static Region *arena__new_region(size_t capacity)
 {
     SIZE_T size_bytes = sizeof(Region) + sizeof(uintptr_t) * capacity;
     Region *r = VirtualAllocEx(
@@ -153,7 +154,7 @@ ARENA_DEF Region *new_region(size_t capacity)
     return r;
 }
 
-ARENA_DEF void free_region(Region *r)
+static void arena__free_region(Region *r)
 {
     if (INV_HANDLE(r))
         return;
@@ -177,7 +178,7 @@ ARENA_DEF void free_region(Region *r)
 
 // TODO: add debug statistic collection mode for arena
 // Should collect things like:
-// - How many times new_region was called
+// - How many times arena__new_region was called
 // - How many times existing region was skipped
 // - How many times allocation exceeded REGION_DEFAULT_CAPACITY
 
@@ -189,7 +190,7 @@ ARENA_DEF void *arena_alloc(Arena *a, size_t size_bytes)
         ARENA_ASSERT(a->begin == NULL);
         size_t capacity = REGION_DEFAULT_CAPACITY;
         if (capacity < size) capacity = size;
-        a->end = new_region(capacity);
+        a->end = arena__new_region(capacity);
         a->begin = a->end;
         a->count = 0;
     }
@@ -212,7 +213,7 @@ ARENA_DEF void *arena_alloc(Arena *a, size_t size_bytes)
     if (a->count + size > a->end->capacity) {
         size_t capacity = REGION_DEFAULT_CAPACITY;
         if (capacity < size) capacity = size;
-        Region *r = new_region(capacity);
+        Region *r = arena__new_region(capacity);
         r->next = old_end->next;
         old_end->next = r;
         a->end = r;
@@ -258,7 +259,7 @@ ARENA_DEF void arena_free(Arena *a)
     while (r) {
         Region *r0 = r;
         r = r->next;
-        free_region(r0);
+        arena__free_region(r0);
     }
     a->begin = NULL;
     a->end = NULL;
