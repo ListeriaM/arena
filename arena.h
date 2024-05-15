@@ -36,6 +36,10 @@
 #define ARENA_BACKEND_WIN32_VIRTUALALLOC 2
 #define ARENA_BACKEND_WASM_HEAPBASE 3
 
+#ifndef ARENA_DEF
+#  define ARENA_DEF
+#endif
+
 #ifndef ARENA_BACKEND
 #define ARENA_BACKEND ARENA_BACKEND_LIBC_MALLOC
 #endif // ARENA_BACKEND
@@ -55,8 +59,8 @@ typedef struct {
 
 #define REGION_DEFAULT_CAPACITY (8*1024)
 
-Region *new_region(size_t capacity);
-void free_region(Region *r);
+ARENA_DEF Region *new_region(size_t capacity);
+ARENA_DEF void free_region(Region *r);
 
 // snapshot/rewind capability for the arena.
 // - Don't use the old arena while using the subarena.
@@ -67,13 +71,13 @@ void free_region(Region *r);
 #define arena_subarena_deinit(a, s)                                           \
     (void)((a)->begin == NULL && ((a)->begin = (a)->end = (s)->begin))
 
-void *arena_alloc(Arena *a, size_t size_bytes);
-void *arena_realloc(Arena *a, void *oldptr, size_t oldsz, size_t newsz);
-char *arena_strdup(Arena *a, const char *cstr);
-void *arena_memdup(Arena *a, const void *data, size_t size);
+ARENA_DEF void *arena_alloc(Arena *a, size_t size_bytes);
+ARENA_DEF void *arena_realloc(Arena *a, void *oldptr, size_t oldsz, size_t newsz);
+ARENA_DEF char *arena_strdup(Arena *a, const char *cstr);
+ARENA_DEF void *arena_memdup(Arena *a, const void *data, size_t size);
 
 #define arena_reset(a) (void)((a)->end = (a)->begin, (a)->count = 0)
-void arena_free(Arena *a);
+ARENA_DEF void arena_free(Arena *a);
 
 #endif // ARENA_H_
 
@@ -84,7 +88,7 @@ void arena_free(Arena *a);
 
 // TODO: instead of accepting specific capacity new_region() should accept the size of the object we want to fit into the region
 // It should be up to new_region() to decide the actual capacity to allocate
-Region *new_region(size_t capacity)
+ARENA_DEF Region *new_region(size_t capacity)
 {
     size_t size_bytes = sizeof(Region) + sizeof(uintptr_t)*capacity;
     // TODO: it would be nice if we could guarantee that the regions are allocated by ARENA_BACKEND_LIBC_MALLOC are page aligned
@@ -95,7 +99,7 @@ Region *new_region(size_t capacity)
     return r;
 }
 
-void free_region(Region *r)
+ARENA_DEF void free_region(Region *r)
 {
     free(r);
 }
@@ -103,7 +107,7 @@ void free_region(Region *r)
 #include <unistd.h>
 #include <sys/mman.h>
 
-Region *new_region(size_t capacity)
+ARENA_DEF Region *new_region(size_t capacity)
 {
     size_t size_bytes = sizeof(Region) + sizeof(uintptr_t) * capacity;
     Region *r = mmap(NULL, size_bytes, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
@@ -113,7 +117,7 @@ Region *new_region(size_t capacity)
     return r;
 }
 
-void free_region(Region *r)
+ARENA_DEF void free_region(Region *r)
 {
     size_t size_bytes = sizeof(Region) + sizeof(uintptr_t) * r->capacity;
     int ret = munmap(r, size_bytes);
@@ -131,7 +135,7 @@ void free_region(Region *r)
 
 #define INV_HANDLE(x)       (((x) == NULL) || ((x) == INVALID_HANDLE_VALUE))
 
-Region *new_region(size_t capacity)
+ARENA_DEF Region *new_region(size_t capacity)
 {
     SIZE_T size_bytes = sizeof(Region) + sizeof(uintptr_t) * capacity;
     Region *r = VirtualAllocEx(
@@ -149,7 +153,7 @@ Region *new_region(size_t capacity)
     return r;
 }
 
-void free_region(Region *r)
+ARENA_DEF void free_region(Region *r)
 {
     if (INV_HANDLE(r))
         return;
@@ -177,7 +181,7 @@ void free_region(Region *r)
 // - How many times existing region was skipped
 // - How many times allocation exceeded REGION_DEFAULT_CAPACITY
 
-void *arena_alloc(Arena *a, size_t size_bytes)
+ARENA_DEF void *arena_alloc(Arena *a, size_t size_bytes)
 {
     size_t size = (size_bytes + sizeof(uintptr_t) - 1)/sizeof(uintptr_t);
 
@@ -220,7 +224,7 @@ void *arena_alloc(Arena *a, size_t size_bytes)
     return result;
 }
 
-void *arena_realloc(Arena *a, void *oldptr, size_t oldsz_bytes, size_t newsz_bytes)
+ARENA_DEF void *arena_realloc(Arena *a, void *oldptr, size_t oldsz_bytes, size_t newsz_bytes)
 {
     size_t oldsz = (oldsz_bytes + sizeof(uintptr_t) - 1)/sizeof(uintptr_t);
     size_t newsz = (newsz_bytes + sizeof(uintptr_t) - 1)/sizeof(uintptr_t);
@@ -238,17 +242,17 @@ void *arena_realloc(Arena *a, void *oldptr, size_t oldsz_bytes, size_t newsz_byt
     return oldptr;
 }
 
-char *arena_strdup(Arena *a, const char *cstr)
+ARENA_DEF char *arena_strdup(Arena *a, const char *cstr)
 {
     return arena_memdup(a, cstr, strlen(cstr) + 1);
 }
 
-void *arena_memdup(Arena *a, const void *data, size_t size)
+ARENA_DEF void *arena_memdup(Arena *a, const void *data, size_t size)
 {
     return memcpy(arena_alloc(a, size), data, size);
 }
 
-void arena_free(Arena *a)
+ARENA_DEF void arena_free(Arena *a)
 {
     Region *r = a->begin;
     while (r) {
