@@ -75,28 +75,6 @@ void *arena_memdup(Arena *a, const void *data, size_t size);
 #define arena_reset(a) (void)((a)->end = (a)->begin, (a)->count = 0)
 void arena_free(Arena *a);
 
-#define ARENA_DA_INIT_CAP 256
-
-#ifdef __cplusplus
-    #define cast_ptr(ptr) (decltype(ptr))
-#else
-    #define cast_ptr(...)
-#endif
-
-#define arena_da_append(a, da, item)                                                          \
-    do {                                                                                      \
-        if ((da)->count >= (da)->capacity) {                                                  \
-            size_t new_capacity = (da)->capacity == 0 ? ARENA_DA_INIT_CAP : (da)->capacity*2; \
-            (da)->items = cast_ptr((da)->items)arena_realloc(                                 \
-                (a), (da)->items,                                                             \
-                (da)->capacity*sizeof(*(da)->items),                                          \
-                new_capacity*sizeof(*(da)->items));                                           \
-            (da)->capacity = new_capacity;                                                    \
-        }                                                                                     \
-                                                                                              \
-        (da)->items[(da)->count++] = (item);                                                  \
-    } while (0)
-
 #endif // ARENA_H_
 
 #ifdef ARENA_IMPLEMENTATION
