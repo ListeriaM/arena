@@ -57,7 +57,8 @@ typedef struct {
 } Arena;
 
 #define ARENA_INIT {0}
-#define arena_reset(a) (void)((a)->end = (a)->begin, (a)->count = 0)
+
+ARENA_DEF void arena_reset(Arena *a);
 ARENA_DEF void arena_deinit(Arena *a);
 
 // snapshot/rewind capability for the arena.
@@ -267,6 +268,13 @@ ARENA_DEF void arena_rewind(Arena *a, ArenaSnapshot s)
     a->end = (s.region != NULL) ? s.region : a->begin;
     a->count = s.count;
 }
+
+ARENA_DEF void arena_reset(Arena *a)
+{
+    a->end = a->begin;
+    a->count = 0;
+}
+
 
 ARENA_DEF void arena_deinit(Arena *a)
 {
