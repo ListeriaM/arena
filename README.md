@@ -28,7 +28,7 @@ int main(void)
     {
         ArenaSnapshot snapshot = arena_snapshot(&arena);
 
-        // Allocate stuff in temporary_arena;
+        // Allocate stuff in temporary arena
         p = arena_alloc(&arena, 64);
         arena_alloc(&arena, 128);
         arena_alloc(&arena, 256);
