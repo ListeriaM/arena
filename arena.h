@@ -56,7 +56,11 @@ typedef struct {
     size_t count;
 } Arena;
 
+#if defined(__cplusplus)
+#define ARENA_INIT {}
+#else
 #define ARENA_INIT {0}
+#endif
 
 ARENA_DEF void arena_reset(Arena *a);
 ARENA_DEF void arena_deinit(Arena *a);
@@ -112,7 +116,7 @@ static void arena__free_region(Region *r)
 static Region *arena__new_region(size_t capacity)
 {
     size_t size_bytes = sizeof(Region) + sizeof(uintptr_t) * capacity;
-    Region *r = mmap(NULL, size_bytes, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+    Region *r = (Region*)mmap(NULL, size_bytes, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
     ARENA_ASSERT(r != MAP_FAILED);
     r->next = NULL;
     r->capacity = capacity;
@@ -140,7 +144,7 @@ static void arena__free_region(Region *r)
 static Region *arena__new_region(size_t capacity)
 {
     SIZE_T size_bytes = sizeof(Region) + sizeof(uintptr_t) * capacity;
-    Region *r = VirtualAllocEx(
+    Region *r = (Region*)VirtualAllocEx(
         GetCurrentProcess(),      /* Allocate in current process address space */
         NULL,                     /* Unknown position */
         size_bytes,               /* Bytes to allocate */
@@ -239,9 +243,9 @@ ARENA_DEF void *arena_realloc(Arena *a, void *oldptr, size_t oldsz_bytes, size_t
         a->count -= oldsz;
         a->count += newsz;
     } else if (newsz > oldsz) {
-        char *newptr = arena_alloc(a, newsz_bytes);
+        void *newptr = arena_alloc(a, newsz_bytes);
         for (size_t i = 0; i < oldsz_bytes; i++)
-            newptr[i] = ((char *)oldptr)[i];
+            ((char *)newptr)[i] = ((char *)oldptr)[i];
         return newptr;
     }
     return oldptr;
