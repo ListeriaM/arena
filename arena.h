@@ -63,7 +63,7 @@ ARENA_DEF void *arena_alloc(Arena *a, size_t size_bytes);
 ARENA_DEF void *arena_realloc(Arena *a, void *oldptr, size_t oldsz, size_t newsz);
 
 #define arena_reset(a) (void)((a)->end = (a)->begin, (a)->count = 0)
-ARENA_DEF void arena_free(Arena *a);
+ARENA_DEF void arena_deinit(Arena *a);
 
 #endif // ARENA_H_
 
@@ -243,7 +243,7 @@ ARENA_DEF void *arena_realloc(Arena *a, void *oldptr, size_t oldsz_bytes, size_t
     return oldptr;
 }
 
-ARENA_DEF void arena_free(Arena *a)
+ARENA_DEF void arena_deinit(Arena *a)
 {
     Region *r = a->begin;
     while (r) {

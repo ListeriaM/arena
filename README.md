@@ -39,7 +39,7 @@ int main(void)
 
     assert(p == arena_alloc(&default_arena, 64));
     // Deallocate everything at once
-    arena_free(&default_arena);
+    arena_deinit(&default_arena);
     return 0;
 }
 ```
