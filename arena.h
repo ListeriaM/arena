@@ -244,8 +244,8 @@ ARENA_DEF void *arena_realloc(Arena *a, void *oldptr, size_t oldsz_bytes, size_t
         a->count += newsz;
     } else if (newsz > oldsz) {
         void *newptr = arena_alloc(a, newsz_bytes);
-        for (size_t i = 0; i < oldsz_bytes; i++)
-            ((char *)newptr)[i] = ((char *)oldptr)[i];
+        for (size_t i = 0; i < oldsz; i++)
+            ((uintptr_t *)newptr)[i] = ((uintptr_t *)oldptr)[i];
         return newptr;
     }
     return oldptr;
