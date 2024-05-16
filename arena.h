@@ -47,6 +47,11 @@
 typedef struct Region Region;
 
 typedef struct {
+    Region *region;
+    size_t count;
+} ArenaSnapshot;
+
+typedef struct {
     Region *begin, *end;
     size_t count;
 } Arena;
@@ -56,13 +61,8 @@ typedef struct {
 ARENA_DEF void arena_deinit(Arena *a);
 
 // snapshot/rewind capability for the arena.
-// - Don't use the old arena while using the subarena.
-// - Subarenas can be nested, but they can't be free'd.
-// - Just stop using the subarena when you're done with it and keep using the
-//   old arena normally.
-#define arena_subarena_init(a) (1 ? *(a) : (Arena){0})
-#define arena_subarena_deinit(a, s)                                           \
-    (void)((a)->begin == NULL && ((a)->begin = (a)->end = (s)->begin))
+ARENA_DEF ArenaSnapshot arena_snapshot(Arena *a);
+ARENA_DEF void arena_rewind(Arena *a, ArenaSnapshot s);
 
 ARENA_DEF void *arena_alloc(Arena *a, size_t size_bytes);
 ARENA_DEF void *arena_realloc(Arena *a, void *oldptr, size_t oldsz, size_t newsz);
@@ -252,6 +252,20 @@ ARENA_DEF void arena_free(Arena *a, void *ptr, size_t size_bytes)
 
     if (ptr != NULL && (uintptr_t *)ptr + sz == &a->end->data[a->count])
         a->count -= sz;
+}
+
+ARENA_DEF ArenaSnapshot arena_snapshot(Arena *a)
+{
+    ArenaSnapshot s;
+    s.region = a->end;
+    s.count = a->count;
+    return s;
+}
+
+ARENA_DEF void arena_rewind(Arena *a, ArenaSnapshot s)
+{
+    a->end = (s.region != NULL) ? s.region : a->begin;
+    a->count = s.count;
 }
 
 ARENA_DEF void arena_deinit(Arena *a)

@@ -16,30 +16,30 @@ The library itself does not require any special building. You can simple copy-pa
 
 int main(void)
 {
-    Arena default_arena = {0};
+    Arena arena = {0};
 
-    // Allocate stuff in default_arena
-    arena_alloc(&default_arena, 64);
-    arena_alloc(&default_arena, 128);
-    arena_alloc(&default_arena, 256);
-    arena_alloc(&default_arena, 512);
+    // Allocate stuff in arena
+    arena_alloc(&arena, 64);
+    arena_alloc(&arena, 128);
+    arena_alloc(&arena, 256);
+    arena_alloc(&arena, 512);
     void *p;
 
     {
-        Arena temporary_arena = arena_subarena_init(&default_arena);
+        ArenaSnapshot snapshot = arena_snapshot(&arena);
 
         // Allocate stuff in temporary_arena;
-        p = arena_alloc(&temporary_arena, 64);
-        arena_alloc(&temporary_arena, 128);
-        arena_alloc(&temporary_arena, 256);
-        arena_alloc(&temporary_arena, 512);
+        p = arena_alloc(&arena, 64);
+        arena_alloc(&arena, 128);
+        arena_alloc(&arena, 256);
+        arena_alloc(&arena, 512);
 
-        arena_subarena_deinit(&default_arena, &temporary_arena);
+        arena_rewind(&arena, snapshot);
     }
 
-    assert(p == arena_alloc(&default_arena, 64));
+    assert(p == arena_alloc(&arena, 64));
     // Deallocate everything at once
-    arena_deinit(&default_arena);
+    arena_deinit(&arena);
     return 0;
 }
 ```
