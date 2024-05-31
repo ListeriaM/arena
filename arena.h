@@ -77,10 +77,21 @@ ARENA_DEF void  arena_free(Arena *a, void *ptr, size_t size_bytes);
 
 #ifdef ARENA_IMPLEMENTATION
 
+#if defined (__cplusplus) || __STDC_VERSION__ >= 201112L
+typedef max_align_t arena__max_align;
+#elif __STDC_VERSION__ >= 199901L
+typedef union {
+    long long ll;
+    long double ld;
+    void (*f)();
+    void *p;
+} arena__max_align;
+#endif
+
 struct Region {
     Region *next;
     size_t capacity;
-    uintptr_t data[];
+    arena__max_align data[];
 };
 
 #define REGION_DEFAULT_CAPACITY (8*1024)
@@ -95,7 +106,7 @@ static void arena__free_region(Region *r);
 // It should be up to arena__new_region() to decide the actual capacity to allocate
 static Region *arena__new_region(size_t capacity)
 {
-    size_t size_bytes = sizeof(Region) + sizeof(uintptr_t)*capacity;
+    size_t size_bytes = sizeof(Region) + sizeof(arena__max_align) * capacity;
     // TODO: it would be nice if we could guarantee that the regions are allocated by ARENA_BACKEND_LIBC_MALLOC are page aligned
     Region *r = (Region*)malloc(size_bytes);
     ARENA_ASSERT(r);
@@ -115,7 +126,7 @@ static void arena__free_region(Region *r)
 
 static Region *arena__new_region(size_t capacity)
 {
-    size_t size_bytes = sizeof(Region) + sizeof(uintptr_t) * capacity;
+    size_t size_bytes = sizeof(Region) + sizeof(arena__max_align) * capacity;
     Region *r = (Region*)mmap(NULL, size_bytes, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
     ARENA_ASSERT(r != MAP_FAILED);
     r->next = NULL;
@@ -125,7 +136,7 @@ static Region *arena__new_region(size_t capacity)
 
 static void arena__free_region(Region *r)
 {
-    size_t size_bytes = sizeof(Region) + sizeof(uintptr_t) * r->capacity;
+    size_t size_bytes = sizeof(Region) + sizeof(arena__max_align) * r->capacity;
     int ret = munmap(r, size_bytes);
     ARENA_ASSERT(ret == 0);
 }
@@ -143,7 +154,7 @@ static void arena__free_region(Region *r)
 
 static Region *arena__new_region(size_t capacity)
 {
-    SIZE_T size_bytes = sizeof(Region) + sizeof(uintptr_t) * capacity;
+    SIZE_T size_bytes = sizeof(Region) + sizeof(arena__max_align) * capacity;
     Region *r = (Region*)VirtualAllocEx(
         GetCurrentProcess(),      /* Allocate in current process address space */
         NULL,                     /* Unknown position */
@@ -189,7 +200,7 @@ static void arena__free_region(Region *r)
 
 ARENA_DEF void *arena_alloc(Arena *a, size_t size_bytes)
 {
-    size_t size = (size_bytes + sizeof(uintptr_t) - 1)/sizeof(uintptr_t);
+    size_t size = (size_bytes + sizeof(arena__max_align) - 1)/sizeof(arena__max_align);
 
     if (a->end == NULL) {
         ARENA_ASSERT(a->begin == NULL);
@@ -232,20 +243,20 @@ ARENA_DEF void *arena_alloc(Arena *a, size_t size_bytes)
 
 ARENA_DEF void *arena_realloc(Arena *a, void *oldptr, size_t oldsz_bytes, size_t newsz_bytes)
 {
-    size_t oldsz = (oldsz_bytes + sizeof(uintptr_t) - 1)/sizeof(uintptr_t);
-    size_t newsz = (newsz_bytes + sizeof(uintptr_t) - 1)/sizeof(uintptr_t);
+    size_t oldsz = (oldsz_bytes + sizeof(arena__max_align) - 1)/sizeof(arena__max_align);
+    size_t newsz = (newsz_bytes + sizeof(arena__max_align) - 1)/sizeof(arena__max_align);
 
     if (oldptr == NULL)
         return arena_alloc(a, newsz_bytes);
 
-    if ((uintptr_t *)oldptr + oldsz == &a->end->data[a->count]
+    if ((arena__max_align *)oldptr + oldsz == &a->end->data[a->count]
             && a->count - oldsz + newsz <= a->end->capacity) {
         a->count -= oldsz;
         a->count += newsz;
     } else if (newsz > oldsz) {
         void *newptr = arena_alloc(a, newsz_bytes);
         for (size_t i = 0; i < oldsz; i++)
-            ((uintptr_t *)newptr)[i] = ((uintptr_t *)oldptr)[i];
+            ((arena__max_align *)newptr)[i] = ((arena__max_align *)oldptr)[i];
         return newptr;
     }
     return oldptr;
@@ -253,9 +264,9 @@ ARENA_DEF void *arena_realloc(Arena *a, void *oldptr, size_t oldsz_bytes, size_t
 
 ARENA_DEF void arena_free(Arena *a, void *ptr, size_t size_bytes)
 {
-    size_t sz = (size_bytes + sizeof(uintptr_t) - 1)/sizeof(uintptr_t);
+    size_t sz = (size_bytes + sizeof(arena__max_align) - 1)/sizeof(arena__max_align);
 
-    if (ptr != NULL && (uintptr_t *)ptr + sz == &a->end->data[a->count])
+    if (ptr != NULL && (arena__max_align *)ptr + sz == &a->end->data[a->count])
         a->count -= sz;
 }
 
