@@ -77,16 +77,32 @@ ARENA_DEF void  arena_free(Arena *a, void *ptr, size_t size_bytes);
 
 #ifdef ARENA_IMPLEMENTATION
 
-#if defined (__cplusplus) || __STDC_VERSION__ >= 201112L
-typedef max_align_t arena__max_align;
-#elif __STDC_VERSION__ >= 199901L
+typedef struct arena__unknown arena__unknown;
+
+// Using max_align_t here would work if sizeof(max_align_t) were guaranteed to
+// be the same as alignof(max_align_t).
+// Since that's not the case we use our own typedef'ed union.
 typedef union {
-    long long ll;
+    long int li;
     long double ld;
-    void (*f)();
-    void *p;
-} arena__max_align;
+    void *vp;
+    arena__unknown (*fp)(arena__unknown);
+    struct { long int li; } sli;
+    struct { long double ld; } sld;
+    struct { void *vp; } svp;
+    struct { arena__unknown (*fp)(arena__unknown); } sfp;
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
+    long long ll;
+    struct { long long ll; } sll;
 #endif
+#if defined (__cplusplus)
+    // See http://erdani.org/publications/cuj-06-2002.php.html
+    arena__unknown* arena__unknown::*mp;
+    arena__unknown (arena__unknown::*mf)(arena__unknown);
+    struct { arena__unknown* arena__unknown::*mp; } smp;
+    struct { arena__unknown (arena__unknown::*mf)(arena__unknown); } smf;
+#endif
+} arena__max_align;
 
 struct Region {
     Region *next;
