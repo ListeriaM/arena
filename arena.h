@@ -27,8 +27,16 @@
 #include <stdint.h>
 
 #ifndef ARENA_ASSERT
-#include <assert.h>
-#define ARENA_ASSERT assert
+# include <assert.h>
+# define ARENA_ASSERT assert
+#endif
+
+#ifndef ARENA_DEF
+# ifdef ARENA_STATIC
+#  define ARENA_DEF static
+# else
+#  define ARENA_DEF extern
+# endif
 #endif
 
 #define ARENA_BACKEND_LIBC_MALLOC 0
@@ -36,13 +44,9 @@
 #define ARENA_BACKEND_WIN32_VIRTUALALLOC 2
 #define ARENA_BACKEND_WASM_HEAPBASE 3
 
-#ifndef ARENA_DEF
-#  define ARENA_DEF
-#endif
-
 #ifndef ARENA_BACKEND
-#define ARENA_BACKEND ARENA_BACKEND_LIBC_MALLOC
-#endif // ARENA_BACKEND
+# define ARENA_BACKEND ARENA_BACKEND_LIBC_MALLOC
+#endif
 
 typedef struct Region Region;
 
