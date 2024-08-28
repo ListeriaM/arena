@@ -47,5 +47,5 @@ int main(void)
 ## Incompatibilities with upstream
 
 Some things like `arena_memdup()`, `arena_strdup()` and `arena_da_append()`
-have been moved to [dynamic_array](https://github.com/ListeriaM/dynamic_array)
-and made independent of the underlying allocator implementation.
+were made independent of the underlying allocator implementation and moved to
+[dynamic_array](https://github.com/ListeriaM/dynamic_array).
