@@ -26,9 +26,21 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* compile with -funreachable-traps (or -fsanitize=unreachable
+ * -fsanitize-trap=unreachable) to keep assertions in release builds */
 #ifndef ARENA_ASSERT
-# include <assert.h>
-# define ARENA_ASSERT assert
+# if defined(assert)
+#  define ARENA_ASSERT assert
+# elif defined(unreachable)
+#  define ARENA_ASSERT(condition) ((condition) ? (void)0 : unreachable())
+# elif defined(__GNUC__)
+#  define ARENA_ASSERT(condition) ((condition) ? (void)0 : __builtin_unreachable())
+# elif defined(_MSC_VER)
+#  define ARENA_ASSERT __assume
+# else
+#  include <assert.h>
+#  define ARENA_ASSERT assert
+# endif
 #endif
 
 #ifndef ARENA_DEF

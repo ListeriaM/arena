@@ -37,7 +37,7 @@ int main(void)
         arena_rewind(&arena, snapshot);
     }
 
-    assert(p == arena_alloc(&arena, 64));
+    ARENA_ASSERT(p == arena_alloc(&arena, 64));
     // Deallocate everything at once
     arena_deinit(&arena);
     return 0;
