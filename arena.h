@@ -60,12 +60,6 @@ typedef struct {
     size_t count;
 } Arena;
 
-#if defined(__cplusplus)
-#define ARENA_INIT {}
-#else
-#define ARENA_INIT {0}
-#endif
-
 ARENA_DEF void arena_reset(Arena *a);
 ARENA_DEF void arena_deinit(Arena *a);
 

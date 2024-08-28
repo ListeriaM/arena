@@ -16,7 +16,7 @@ The library itself does not require any special building. You can simple copy-pa
 
 int main(void)
 {
-    Arena arena = ARENA_INIT;
+    Arena arena = {0};
 
     // Allocate stuff in arena
     arena_alloc(&arena, 64);
