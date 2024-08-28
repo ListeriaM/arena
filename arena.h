@@ -44,11 +44,7 @@
 #endif
 
 #ifndef ARENA_DEF
-# ifdef ARENA_STATIC
-#  define ARENA_DEF static
-# else
-#  define ARENA_DEF extern
-# endif
+# define ARENA_DEF
 #endif
 
 #define ARENA_BACKEND_LIBC_MALLOC 0
