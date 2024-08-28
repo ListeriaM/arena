@@ -97,9 +97,10 @@ typedef union {
     struct { long double ld; } sld;
     struct { void *vp; } svp;
     struct { arena__unknown (*fp)(arena__unknown); } sfp;
-#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
-    long long ll;
-    struct { long long ll; } sll;
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L || \
+    defined(__cplusplus) && __cplusplus >= 201103L
+    long long int lli;
+    struct { long long int lli; } slli;
 #endif
 #if defined (__cplusplus)
     // See http://erdani.org/publications/cuj-06-2002.php.html
