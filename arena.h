@@ -24,7 +24,6 @@
 #define ARENA_H_
 
 #include <stddef.h>
-#include <stdint.h>
 
 /* compile with -funreachable-traps (or -fsanitize=unreachable
  * -fsanitize-trap=unreachable) to keep assertions in release builds */
