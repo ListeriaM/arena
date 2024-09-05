@@ -173,19 +173,16 @@ static void arena__free_region(ArenaRegion *r)
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
-#define INV_HANDLE(x)       (((x) == NULL) || ((x) == INVALID_HANDLE_VALUE))
-
 static ArenaRegion *arena__new_region(size_t capacity)
 {
     SIZE_T size_bytes = sizeof(ArenaRegion) + sizeof(arena__max_align) * capacity;
-    ArenaRegion *r = (ArenaRegion*)VirtualAllocEx(
-        GetCurrentProcess(),      /* Allocate in current process address space */
+    ArenaRegion *r = (ArenaRegion*)VirtualAlloc(
         NULL,                     /* Unknown position */
         size_bytes,               /* Bytes to allocate */
         MEM_COMMIT | MEM_RESERVE, /* Reserve and commit allocated page */
         PAGE_READWRITE            /* Permissions ( Read/Write )*/
     );
-    if (INV_HANDLE(r))
+    if (!r)
         ARENA_ASSERT(0 && "VirtualAllocEx() failed.");
 
     r->next = NULL;
@@ -195,11 +192,7 @@ static ArenaRegion *arena__new_region(size_t capacity)
 
 static void arena__free_region(ArenaRegion *r)
 {
-    if (INV_HANDLE(r))
-        return;
-
-    BOOL free_result = VirtualFreeEx(
-        GetCurrentProcess(),        /* Deallocate from current process address space */
+    BOOL free_result = VirtualFree(
         (LPVOID)r,                  /* Address to deallocate */
         0,                          /* Bytes to deallocate ( Unknown, deallocate entire page ) */
         MEM_RELEASE                 /* Release the page ( And implicitly decommit it ) */
