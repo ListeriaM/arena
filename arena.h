@@ -56,15 +56,15 @@
 # define ARENA_BACKEND ARENA_BACKEND_LIBC_MALLOC
 #endif
 
-typedef struct Region Region;
+typedef struct ArenaRegion ArenaRegion;
 
-typedef struct {
-    Region *region;
+typedef struct ArenaSnapshot {
+    ArenaRegion *region;
     size_t count;
 } ArenaSnapshot;
 
-typedef struct {
-    Region *begin, *end;
+typedef struct Arena {
+    ArenaRegion *begin, *end;
     size_t count;
 } Arena;
 
@@ -112,34 +112,34 @@ typedef union {
 #endif
 } arena__max_align;
 
-struct Region {
-    Region *next;
+struct ArenaRegion {
+    ArenaRegion *next;
     size_t capacity;
     arena__max_align data[];
 };
 
 #define REGION_DEFAULT_CAPACITY (8*1024)
 
-static Region *arena__new_region(size_t capacity);
-static void arena__free_region(Region *r);
+static ArenaRegion *arena__new_region(size_t capacity);
+static void arena__free_region(ArenaRegion *r);
 
 #if ARENA_BACKEND == ARENA_BACKEND_LIBC_MALLOC
 #include <stdlib.h>
 
 // TODO: instead of accepting specific capacity arena__new_region() should accept the size of the object we want to fit into the region
 // It should be up to arena__new_region() to decide the actual capacity to allocate
-static Region *arena__new_region(size_t capacity)
+static ArenaRegion *arena__new_region(size_t capacity)
 {
-    size_t size_bytes = sizeof(Region) + sizeof(arena__max_align) * capacity;
+    size_t size_bytes = sizeof(ArenaRegion) + sizeof(arena__max_align) * capacity;
     // TODO: it would be nice if we could guarantee that the regions are allocated by ARENA_BACKEND_LIBC_MALLOC are page aligned
-    Region *r = (Region*)malloc(size_bytes);
+    ArenaRegion *r = (ArenaRegion*)malloc(size_bytes);
     ARENA_ASSERT(r);
     r->next = NULL;
     r->capacity = capacity;
     return r;
 }
 
-static void arena__free_region(Region *r)
+static void arena__free_region(ArenaRegion *r)
 {
     free(r);
 }
@@ -148,19 +148,19 @@ static void arena__free_region(Region *r)
 #include <unistd.h>
 #include <sys/mman.h>
 
-static Region *arena__new_region(size_t capacity)
+static ArenaRegion *arena__new_region(size_t capacity)
 {
-    size_t size_bytes = sizeof(Region) + sizeof(arena__max_align) * capacity;
-    Region *r = (Region*)mmap(NULL, size_bytes, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+    size_t size_bytes = sizeof(ArenaRegion) + sizeof(arena__max_align) * capacity;
+    ArenaRegion *r = (ArenaRegion*)mmap(NULL, size_bytes, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
     ARENA_ASSERT(r != MAP_FAILED);
     r->next = NULL;
     r->capacity = capacity;
     return r;
 }
 
-static void arena__free_region(Region *r)
+static void arena__free_region(ArenaRegion *r)
 {
-    size_t size_bytes = sizeof(Region) + sizeof(arena__max_align) * r->capacity;
+    size_t size_bytes = sizeof(ArenaRegion) + sizeof(arena__max_align) * r->capacity;
     int ret = munmap(r, size_bytes);
     ARENA_ASSERT(ret == 0);
 }
@@ -176,10 +176,10 @@ static void arena__free_region(Region *r)
 
 #define INV_HANDLE(x)       (((x) == NULL) || ((x) == INVALID_HANDLE_VALUE))
 
-static Region *arena__new_region(size_t capacity)
+static ArenaRegion *arena__new_region(size_t capacity)
 {
-    SIZE_T size_bytes = sizeof(Region) + sizeof(arena__max_align) * capacity;
-    Region *r = (Region*)VirtualAllocEx(
+    SIZE_T size_bytes = sizeof(ArenaRegion) + sizeof(arena__max_align) * capacity;
+    ArenaRegion *r = (ArenaRegion*)VirtualAllocEx(
         GetCurrentProcess(),      /* Allocate in current process address space */
         NULL,                     /* Unknown position */
         size_bytes,               /* Bytes to allocate */
@@ -194,7 +194,7 @@ static Region *arena__new_region(size_t capacity)
     return r;
 }
 
-static void arena__free_region(Region *r)
+static void arena__free_region(ArenaRegion *r)
 {
     if (INV_HANDLE(r))
         return;
@@ -236,8 +236,8 @@ ARENA_DEF void *arena_alloc(Arena *a, size_t size_bytes)
     }
 
 
-    Region *old_end = a->end;
-    Region **end_p = NULL;
+    ArenaRegion *old_end = a->end;
+    ArenaRegion **end_p = NULL;
     while (a->count + size > a->end->capacity && a->end->next != NULL) {
         end_p = &a->end->next;
         a->end = *end_p;
@@ -253,7 +253,7 @@ ARENA_DEF void *arena_alloc(Arena *a, size_t size_bytes)
     if (a->count + size > a->end->capacity) {
         size_t capacity = REGION_DEFAULT_CAPACITY;
         if (capacity < size) capacity = size;
-        Region *r = arena__new_region(capacity);
+        ArenaRegion *r = arena__new_region(capacity);
         r->next = old_end->next;
         old_end->next = r;
         a->end = r;
@@ -317,9 +317,9 @@ ARENA_DEF void arena_reset(Arena *a)
 
 ARENA_DEF void arena_deinit(Arena *a)
 {
-    Region *r = a->begin;
+    ArenaRegion *r = a->begin;
     while (r) {
-        Region *r0 = r;
+        ArenaRegion *r0 = r;
         r = r->next;
         arena__free_region(r0);
     }
