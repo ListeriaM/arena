@@ -82,6 +82,7 @@ ARENA_DEF void  arena_free(Arena *a, void *ptr, size_t size_bytes);
 #endif // ARENA_H_
 
 #ifdef ARENA_IMPLEMENTATION
+#undef ARENA_IMPLEMENTATION
 
 typedef struct arena__unknown arena__unknown;
 
