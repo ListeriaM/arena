@@ -178,7 +178,7 @@ static ArenaRegion *arena__new_region(size_t capacity)
         PAGE_READWRITE            /* Permissions ( Read/Write )*/
     );
     if (!r)
-        ARENA_ASSERT(0 && "VirtualAllocEx() failed.");
+        ARENA_ASSERT(0 && "VirtualAlloc() failed.");
 
     r->next = NULL;
     r->capacity = capacity;
@@ -194,7 +194,7 @@ static void arena__free_region(ArenaRegion *r)
     );
 
     if (FALSE == free_result)
-        ARENA_ASSERT(0 && "VirtualFreeEx() failed.");
+        ARENA_ASSERT(0 && "VirtualFree() failed.");
 }
 
 #elif ARENA_BACKEND == ARENA_BACKEND_WASM_HEAPBASE
